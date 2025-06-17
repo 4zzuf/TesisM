@@ -2,21 +2,23 @@
 
 Este repositorio contiene utilidades para simulación.
 
-Las simulaciones por defecto abarcan 500 horas de operación.
+Las simulaciones por defecto abarcan 500 horas de operación (alrededor de
+21 días). Las métricas impresas convierten esa duración a días para facilitar
+la interpretación. Por defecto se consideran hasta 20 autobuses en la estación.
 
 ## Gráfico de eficiencia operativa
 
 Ejecuta el script `tiempos_intercambio.py` para visualizar el tiempo de
-operación promedio por autobús. Cada vehículo efectúa una ruta de dos horas y
-regresa con la batería al 20‑30 % de carga para un nuevo intercambio. El valor
-incluye la espera en cola y el reemplazo de 4 minutos, expresado en minutos. El
-script agrupa a todos los autobuses de la simulación para reflejar la cola:
+intercambio promedio de la estación según el número de autobuses. Cada vehículo
+efectúa una ruta de dos horas y regresa con la batería al 20‑30 % de carga para
+un nuevo intercambio. El valor mostrado incluye la espera en cola y el
+reemplazo de 4 minutos, expresado en minutos:
 
 ```bash
 python tiempos_intercambio.py
 ```
-
-Se abrirá una ventana con la gráfica correspondiente.
+Se abrirá una ventana con la gráfica que relaciona el número de autobuses con
+el tiempo promedio de cada intercambio.
 
 ## Gráficos de costos y consumos
 
@@ -56,6 +58,16 @@ y una barra adicional con el ahorro total de CO₂:
 
 ```bash
 python graficos_emisiones.py
+```
+
+## Otros gráficos
+
+El script `graficos_diarios.py` muestra la evolución diaria de los
+intercambios de batería y del consumo de energía durante el periodo
+simulado:
+
+```bash
+python graficos_diarios.py
 ```
 
 ## Ejecutar las pruebas

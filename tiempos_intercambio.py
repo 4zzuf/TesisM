@@ -7,7 +7,7 @@ from modelo import param_simulacion
 TIEMPO_REEMPLAZO = 4 / 60  # Tiempo fijo del intercambio en horas
 
 def tiempo_promedio_para_autobuses(numero_autobuses):
-    """Calcula el tiempo promedio de permanencia por autobús en minutos."""
+    """Calcula el tiempo promedio de intercambio por autobús en minutos."""
     # Desactivar la verbosidad durante las simulaciones
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
@@ -29,8 +29,8 @@ def main():
     plt.figure(figsize=(8, 4))
     plt.plot(valores, tiempos, marker='o')
     plt.xlabel('Número de autobuses')
-    plt.ylabel('Tiempo promedio de operación (minutos)')
-    plt.title('Eficiencia operativa de la estación')
+    plt.ylabel('Tiempo promedio de intercambio (minutos)')
+    plt.title('Tiempo promedio de intercambio por número de autobuses')
     plt.grid(True)
     plt.tight_layout()
     plt.show()

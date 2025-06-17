@@ -50,6 +50,7 @@ class EstacionIntercambio:
         self.energia_fuera_punta_autobuses = 0  # Energía consumida fuera de hora punta por autobuses
         self.energia_punta_electrica = 0  # Energía consumida en hora punta de electricidad
         self.intercambios_realizados = 0  # Cantidad de reemplazos efectuados
+        self.registro_intercambios = []  # Historial de intercambios (tiempo y energia)
 
         # Costo de cargar las baterías iniciales
         self.cargar_baterias_iniciales()
@@ -84,6 +85,7 @@ class EstacionIntercambio:
             )
         yield self.env.timeout(tiempo_reemplazo)
         self.intercambios_realizados += 1
+        self.registro_intercambios.append((self.env.now, capacidad_requerida))
 
         # Clasificar consumo de energía según hora punta de autobuses
         if 7 <= hora_actual < 9 or 18 <= hora_actual < 20:
@@ -217,6 +219,8 @@ def ejecutar_simulacion(
 
 def imprimir_resultados(estacion):
     """Muestra por pantalla los resultados de la simulación."""
+    dias = param_simulacion.duracion / 24
+    print(f"\nResultados para {dias:.1f} d\u00edas de operaci\u00f3n")
     print(
         f"\nConsumo total de energía en hora punta de autobuses: {estacion.energia_punta_autobuses:.2f} kWh"
     )
