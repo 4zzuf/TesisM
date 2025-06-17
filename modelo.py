@@ -123,7 +123,11 @@ class EstacionIntercambio:
     def cargar_bateria(self):
         """Proceso individual de un cargador."""
         while True:
-            # Esperar hasta disponer de una batería descargada
+            # Comprobar cada minuto si hay baterías por cargar
+            if len(self.baterias_descargadas.items) == 0:
+                yield self.env.timeout(1 / 60)
+                continue
+
             soc_actual = yield self.baterias_descargadas.get()
             self.baterias_cargando += 1
 
