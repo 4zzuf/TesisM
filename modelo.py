@@ -16,6 +16,9 @@ param_operacion = ParametrosOperacionBus()
 param_economicos = ParametrosEconomicos()
 param_simulacion = ParametrosSimulacion()
 
+# Controla la verbosidad de la simulación
+VERBOSE = True
+
 # Función para formatear horas decimales a formato hh:mm
 def formato_hora(horas_decimales):
     horas, minutos = divmod(horas_decimales * 60, 60)
@@ -61,7 +64,8 @@ class EstacionIntercambio:
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
         inicio_espera = self.env.now
         while self.baterias_disponibles <= 0:  # Si no hay baterías disponibles
-            print(f"Autobús {autobuses_id} espera porque no hay baterías disponibles en {formato_hora(self.env.now)}")
+            if VERBOSE:
+                print(f"Autobús {autobuses_id} espera porque no hay baterías disponibles en {formato_hora(self.env.now)}")
             yield self.env.timeout(1)  # Espera 1 hora antes de intentar nuevamente
 
         # Registra el tiempo total de espera acumulado
@@ -73,8 +77,11 @@ class EstacionIntercambio:
         capacidad_requerida = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
         tiempo_reemplazo = 0.083  # 5 minutos en horas
         hora_final = self.env.now + tiempo_reemplazo  # Hora después del intercambio
-        print(f"Autobús {autobuses_id} reemplaza su batería en {formato_hora(self.env.now)} "
-              f"(SoC inicial: {soc_inicial:.2f}%). Hora final: {formato_hora(hora_final)}")
+        if VERBOSE:
+            print(
+                f"Autobús {autobuses_id} reemplaza su batería en {formato_hora(self.env.now)} "
+                f"(SoC inicial: {soc_inicial:.2f}%). Hora final: {formato_hora(hora_final)}"
+            )
         yield self.env.timeout(tiempo_reemplazo)
 
         # Clasificar consumo de energía según hora punta de autobuses
@@ -103,10 +110,16 @@ class EstacionIntercambio:
 
                     if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
                         costo_carga = capacidad_carga * param_economicos.costo_punta
-                        print(f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})")
+                        if VERBOSE:
+                            print(
+                                f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})"
+                            )
                     else:  # Hora fuera de punta
                         costo_carga = capacidad_carga * param_economicos.costo_normal
-                        print(f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})")
+                        if VERBOSE:
+                            print(
+                                f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})"
+                            )
 
                     yield self.env.timeout(tiempo_carga)
                     self.baterias_disponibles += 1
@@ -125,8 +138,11 @@ def llegada_autobuses(env, estacion, max_autobuses):
         autobuses_id += 1
         hora_actual = int(env.now % 24)
         soc_inicial = calcular_soc_inicial(hora_actual)
-        print(f"Autobús {autobuses_id} llega a la estación en {formato_hora(env.now)} "
-              f"(Hora actual: {hora_actual}, SoC inicial: {soc_inicial:.2f}%)")
+        if VERBOSE:
+            print(
+                f"Autobús {autobuses_id} llega a la estación en {formato_hora(env.now)} "
+                f"(Hora actual: {hora_actual}, SoC inicial: {soc_inicial:.2f}%)"
+            )
         env.process(proceso_autobus(env, estacion, autobuses_id, soc_inicial, hora_actual))
 
 
@@ -137,36 +153,52 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, hora_actual):
         yield req
         tiempo_espera = env.now - llegada
         estacion.tiempo_espera_total += tiempo_espera
-        print(f"Autobús {autobuses_id} entra a la estación en {formato_hora(env.now)} "
-              f"tras esperar {formato_hora(tiempo_espera)}")
+        if VERBOSE:
+            print(
+                f"Autobús {autobuses_id} entra a la estación en {formato_hora(env.now)} "
+                f"tras esperar {formato_hora(tiempo_espera)}"
+            )
         yield env.process(estacion.reemplazar_bateria(autobuses_id, soc_inicial, hora_actual))
 
 
 # Configuración de la simulación
-random.seed(param_simulacion.semilla)
-env = simpy.Environment()
-estacion = EstacionIntercambio(env, param_estacion.capacidad_estacion)
+def ejecutar_simulacion(max_autobuses=param_simulacion.max_autobuses, duracion=param_simulacion.duracion):
+    """Ejecuta la simulación y devuelve la estación resultante."""
+    random.seed(param_simulacion.semilla)
+    env = simpy.Environment()
+    estacion = EstacionIntercambio(env, param_estacion.capacidad_estacion)
 
-# Procesos: Llegada de autobuses y carga de baterías
-env.process(llegada_autobuses(env, estacion, max_autobuses=param_simulacion.max_autobuses))
-env.process(estacion.cargar_bateria())  # Proceso continuo de carga de baterías
+    env.process(llegada_autobuses(env, estacion, max_autobuses=max_autobuses))
+    env.process(estacion.cargar_bateria())
 
-# Ejecutar la simulación
-env.run(until=param_simulacion.duracion)  # Simula por la duración indicada
+    env.run(until=duracion)
+    return estacion
 
-# Resultados
-print(f"\nConsumo total de energía en hora punta de autobuses: {estacion.energia_punta_autobuses:.2f} kWh")
-print(f"Consumo total de energía fuera de hora punta de autobuses: {estacion.energia_fuera_punta_autobuses:.2f} kWh")
-print(f"Consumo total de energía en hora punta de electricidad: {estacion.energia_punta_electrica:.2f} kWh")
-print(f"Tiempo total de espera acumulado: {formato_hora(estacion.tiempo_espera_total)}")
-print(f"Costo total de operación (eléctrico): S/. {estacion.costo_total_electrico:.2f}")
-# Comparación de costos entre electricidad y petróleo
-print(f"\nCosto total usando electricidad: S/. {estacion.costo_total_electrico:.2f}")
-print(f"Costo total usando petróleo: S/. {estacion.costo_total_petroleo:.2f}")
 
-if estacion.costo_total_electrico < estacion.costo_total_petroleo:
-    print("Es más barato operar con electricidad.")
-else:
-    print("Es más barato operar con petróleo.")
+def imprimir_resultados(estacion):
+    """Muestra por pantalla los resultados de la simulación."""
+    print(
+        f"\nConsumo total de energía en hora punta de autobuses: {estacion.energia_punta_autobuses:.2f} kWh"
+    )
+    print(
+        f"Consumo total de energía fuera de hora punta de autobuses: {estacion.energia_fuera_punta_autobuses:.2f} kWh"
+    )
+    print(
+        f"Consumo total de energía en hora punta de electricidad: {estacion.energia_punta_electrica:.2f} kWh"
+    )
+    print(f"Tiempo total de espera acumulado: {formato_hora(estacion.tiempo_espera_total)}")
+    print(f"Costo total de operación (eléctrico): S/. {estacion.costo_total_electrico:.2f}")
+    print(f"\nCosto total usando electricidad: S/. {estacion.costo_total_electrico:.2f}")
+    print(f"Costo total usando petróleo: S/. {estacion.costo_total_petroleo:.2f}")
+
+    if estacion.costo_total_electrico < estacion.costo_total_petroleo:
+        print("Es más barato operar con electricidad.")
+    else:
+        print("Es más barato operar con petróleo.")
+
+
+if __name__ == "__main__":
+    estacion = ejecutar_simulacion()
+    imprimir_resultados(estacion)
 
 
