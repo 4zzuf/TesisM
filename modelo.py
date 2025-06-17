@@ -36,12 +36,10 @@ def calcular_soc_inicial(hora_actual):
 class EstacionIntercambio:
     def __init__(self, env, capacidad_estacion):
         self.env = env
-        # Recursos separados para intercambios y cargadores
         # "estaciones" representa los puntos donde los autobuses realizan el
-        # cambio de batería, mientras que "cargadores" son los conectores que
-        # recargan las baterías descargadas.
+        # cambio de batería. Cada cargador se gestiona mediante un proceso
+        # independiente, por lo que no se requiere un recurso adicional.
         self.estaciones = simpy.Resource(env, capacity=capacidad_estacion)
-        self.cargadores = simpy.Resource(env, capacity=capacidad_estacion)
 
         # Inventario de baterías cargadas disponible para los autobuses
         self.baterias_reserva = simpy.Container(
@@ -116,40 +114,35 @@ class EstacionIntercambio:
         # La estimación de consumo de gas se calcula tras la ruta del autobús
 
     def cargar_bateria(self):
+        """Proceso individual de un cargador."""
         while True:
+            # Esperar hasta disponer de una batería descargada
+            yield self.baterias_descargadas.get(1)
+            self.baterias_cargando += 1
+
             hora_actual = int(self.env.now % 24)
-            if self.baterias_descargadas.level > 0 and (
-                self.baterias_reserva.level + self.baterias_cargando
-                < param_estacion.total_baterias
-            ):
-                # Utiliza un cargador disponible para recargar la batería
-                with self.cargadores.request() as req:
-                    yield req
-                    yield self.baterias_descargadas.get(1)
-                    self.baterias_cargando += 1
-                    capacidad_carga = param_bateria.capacidad
-                    tiempo_carga = capacidad_carga / param_bateria.potencia_carga
+            capacidad_carga = param_bateria.capacidad
+            tiempo_carga = capacidad_carga / param_bateria.potencia_carga
 
-                    if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
-                        costo_carga = capacidad_carga * param_economicos.costo_punta
-                        if VERBOSE:
-                            print(
-                                f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})"
-                            )
-                    else:
-                        costo_carga = capacidad_carga * param_economicos.costo_normal
-                        if VERBOSE:
-                            print(
-                                f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})"
-                            )
-
-                    yield self.env.timeout(tiempo_carga)
-                    self.baterias_cargando -= 1
-                    yield self.baterias_reserva.put(1)
-                    self.energia_total_cargada += capacidad_carga
-                    self.costo_total_electrico += costo_carga
+            if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
+                costo_carga = capacidad_carga * param_economicos.costo_punta
+                if VERBOSE:
+                    print(
+                        f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})"
+                    )
             else:
-                yield self.env.timeout(1 / 60)
+                costo_carga = capacidad_carga * param_economicos.costo_normal
+                if VERBOSE:
+                    print(
+                        f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})"
+                    )
+
+            yield self.env.timeout(tiempo_carga)
+
+            self.baterias_cargando -= 1
+            yield self.baterias_reserva.put(1)
+            self.energia_total_cargada += capacidad_carga
+            self.costo_total_electrico += costo_carga
 
 
 # Procesos para simular la llegada de autobuses
