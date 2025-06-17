@@ -38,7 +38,6 @@ class EstacionIntercambio:
         self.tiempo_espera_total = 0  # Tiempo total de espera acumulado
         self.energia_total_cargada = 0  # Energía total consumida para cargar baterías
         self.costo_total_electrico = 0  # Costo total de carga eléctrica
-        self.costo_total_petroleo = 0  # Costo total si se usara petróleo
         self.energia_punta_autobuses = 0  # Energía consumida en hora punta por autobuses
         self.energia_fuera_punta_autobuses = 0  # Energía consumida fuera de hora punta por autobuses
         self.energia_punta_electrica = 0  # Energía consumida en hora punta de electricidad
@@ -87,9 +86,6 @@ class EstacionIntercambio:
         if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
             self.energia_punta_electrica += capacidad_requerida
 
-        # Costo si se usara petróleo
-        costo_petroleo = (1 - soc_inicial / 100) * param_economicos.costo_petroleo_completo
-        self.costo_total_petroleo += costo_petroleo
 
     def cargar_bateria(self):
         while True:
@@ -160,13 +156,5 @@ print(f"Consumo total de energía fuera de hora punta de autobuses: {estacion.en
 print(f"Consumo total de energía en hora punta de electricidad: {estacion.energia_punta_electrica:.2f} kWh")
 print(f"Tiempo total de espera acumulado: {formato_hora(estacion.tiempo_espera_total)}")
 print(f"Costo total de operación (eléctrico): S/. {estacion.costo_total_electrico:.2f}")
-# Comparación de costos entre electricidad y petróleo
-print(f"\nCosto total usando electricidad: S/. {estacion.costo_total_electrico:.2f}")
-print(f"Costo total usando petróleo: S/. {estacion.costo_total_petroleo:.2f}")
-
-if estacion.costo_total_electrico < estacion.costo_total_petroleo:
-    print("Es más barato operar con electricidad.")
-else:
-    print("Es más barato operar con petróleo.")
 
 
