@@ -26,55 +26,98 @@ def calcular_soc_inicial(hora_actual):
     if 7 <= hora_actual < 9 or 18 <= hora_actual < 20:  # Hora punta de autobuses
         soc_inicial = random.uniform(10, 20)  # SoC entre 10% y 20%
     else:  # Fuera de hora punta de autobuses
-        soc_inicial = random.uniform(30, 40)  # SoC entre 30% y 40%
+    soc_inicial = random.uniform(30, 40)  # SoC entre 30% y 40%
     return soc_inicial
+
+
+class Bateria:
+    """Representa una batería individual con degradación."""
+
+    def __init__(self, capacidad_inicial, factor_degradacion):
+        self.capacidad = capacidad_inicial
+        self.factor_degradacion = factor_degradacion
+
+    def degradar(self):
+        """Aplica la degradación luego de una recarga."""
+        self.capacidad *= self.factor_degradacion
 
 
 class EstacionIntercambio:
     def __init__(self, env, capacidad_estacion):
         self.env = env
         self.estaciones = simpy.Resource(env, capacity=capacidad_estacion)
-        self.baterias_disponibles = param_estacion.baterias_iniciales  # Baterías previamente cargadas
-        self.tiempo_espera_total = 0  # Tiempo total de espera acumulado
-        self.energia_total_cargada = 0  # Energía total consumida para cargar baterías
-        self.costo_total_electrico = 0  # Costo total de carga eléctrica
-        self.costo_total_petroleo = 0  # Costo total si se usara petróleo
-        self.energia_punta_autobuses = 0  # Energía consumida en hora punta por autobuses
-        self.energia_fuera_punta_autobuses = 0  # Energía consumida fuera de hora punta por autobuses
-        self.energia_punta_electrica = 0  # Energía consumida en hora punta de electricidad
 
-        # Costo de cargar las baterías iniciales
-        self.cargar_baterias_iniciales()
+        # Listas de baterías según su estado
+        self.baterias_disponibles = []  # Totalmente cargadas
+        self.baterias_descargadas = []  # Necesitan recarga
+        self.baterias_en_uso = []  # Se encuentran en los autobuses
 
-    def cargar_baterias_iniciales(self):
-        for _ in range(param_estacion.baterias_iniciales):
-            hora_actual = 0  # Asumimos que se cargaron antes del inicio de la simulación
-            capacidad_carga = param_bateria.capacidad
-            if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
-                costo_carga = capacidad_carga * param_economicos.costo_punta
-            else:  # Hora fuera de punta
-                costo_carga = capacidad_carga * param_economicos.costo_normal
+        self.tiempo_espera_total = 0
+        self.energia_total_cargada = 0
+        self.costo_total_electrico = 0
+        self.energia_punta_autobuses = 0
+        self.energia_fuera_punta_autobuses = 0
+        self.energia_punta_electrica = 0
 
-            self.energia_total_cargada += capacidad_carga
-            self.costo_total_electrico += costo_carga
+        # Crear todas las baterías y realizar la carga inicial
+        self._inicializar_baterias()
+
+    def _inicializar_baterias(self):
+        """Genera las baterías y aplica la primera carga."""
+        for i in range(param_estacion.total_baterias):
+            bateria = Bateria(param_bateria.capacidad, param_bateria.factor_degradacion)
+            if i < param_estacion.baterias_iniciales:
+                self._cargar_bateria_inicial(bateria)
+                self.baterias_disponibles.append(bateria)
+            else:
+                # Asumimos que el resto está en uso al iniciar la simulación
+                self.baterias_en_uso.append(bateria)
+
+    def _cargar_bateria_inicial(self, bateria):
+        """Carga una batería al comienzo de la simulación."""
+        hora_actual = 0
+        capacidad_carga = bateria.capacidad
+        if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
+            costo_carga = capacidad_carga * param_economicos.costo_punta
+        else:
+            costo_carga = capacidad_carga * param_economicos.costo_normal
+        self.energia_total_cargada += capacidad_carga
+        self.costo_total_electrico += costo_carga
+        bateria.degradar()
+
 
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
         inicio_espera = self.env.now
-        while self.baterias_disponibles <= 0:  # Si no hay baterías disponibles
-            print(f"Autobús {autobuses_id} espera porque no hay baterías disponibles en {formato_hora(self.env.now)}")
-            yield self.env.timeout(1)  # Espera 1 hora antes de intentar nuevamente
+        while not self.baterias_disponibles:
+            print(
+                f"Autobús {autobuses_id} espera porque no hay baterías disponibles en {formato_hora(self.env.now)}"
+            )
+            yield self.env.timeout(1)
 
         # Registra el tiempo total de espera acumulado
         tiempo_espera = self.env.now - inicio_espera
         self.tiempo_espera_total += tiempo_espera
 
-        # Proceso de reemplazo
-        self.baterias_disponibles -= 1
-        capacidad_requerida = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
+        # Batería usada que retorna el autobús
+        if self.baterias_en_uso:
+            bateria_descargada = self.baterias_en_uso.pop(0)
+        else:
+            bateria_descargada = Bateria(param_bateria.capacidad, param_bateria.factor_degradacion)
+        self.baterias_descargadas.append(bateria_descargada)
+
+        # Batería cargada que se entrega al autobús
+        bateria_entregada = self.baterias_disponibles.pop(0)
+        self.baterias_en_uso.append(bateria_entregada)
+
+        capacidad_requerida = (
+            (param_bateria.soc_objetivo - soc_inicial) / 100 * bateria_descargada.capacidad
+        )
         tiempo_reemplazo = 0.083  # 5 minutos en horas
-        hora_final = self.env.now + tiempo_reemplazo  # Hora después del intercambio
-        print(f"Autobús {autobuses_id} reemplaza su batería en {formato_hora(self.env.now)} "
-              f"(SoC inicial: {soc_inicial:.2f}%). Hora final: {formato_hora(hora_final)}")
+        hora_final = self.env.now + tiempo_reemplazo
+        print(
+            f"Autobús {autobuses_id} reemplaza su batería en {formato_hora(self.env.now)} "
+            f"(SoC inicial: {soc_inicial:.2f}%). Hora final: {formato_hora(hora_final)}"
+        )
         yield self.env.timeout(tiempo_reemplazo)
 
         # Clasificar consumo de energía según hora punta de autobuses
@@ -87,33 +130,31 @@ class EstacionIntercambio:
         if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
             self.energia_punta_electrica += capacidad_requerida
 
-        # Costo si se usara petróleo
-        costo_petroleo = (1 - soc_inicial / 100) * param_economicos.costo_petroleo_completo
-        self.costo_total_petroleo += costo_petroleo
 
     def cargar_bateria(self):
         while True:
-            # Hora actual en la simulación
             hora_actual = int(self.env.now % 24)
-            if self.baterias_disponibles < param_estacion.total_baterias:
+            if self.baterias_descargadas:
                 with self.estaciones.request() as req:
-                    yield req  # Adquiere un cargador disponible
-                    capacidad_carga = param_bateria.capacidad
+                    yield req
+                    bateria = self.baterias_descargadas.pop(0)
+                    capacidad_carga = bateria.capacidad
                     tiempo_carga = capacidad_carga / param_bateria.potencia_carga
 
-                    if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
+                    if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
                         costo_carga = capacidad_carga * param_economicos.costo_punta
                         print(f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})")
-                    else:  # Hora fuera de punta
+                    else:
                         costo_carga = capacidad_carga * param_economicos.costo_normal
                         print(f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})")
 
                     yield self.env.timeout(tiempo_carga)
-                    self.baterias_disponibles += 1
                     self.energia_total_cargada += capacidad_carga
                     self.costo_total_electrico += costo_carga
+                    bateria.degradar()
+                    self.baterias_disponibles.append(bateria)
             else:
-                yield self.env.timeout(1)  # Espera 1 hora antes de verificar nuevamente
+                yield self.env.timeout(1)
 
 
 # Procesos para simular la llegada de autobuses
@@ -160,13 +201,5 @@ print(f"Consumo total de energía fuera de hora punta de autobuses: {estacion.en
 print(f"Consumo total de energía en hora punta de electricidad: {estacion.energia_punta_electrica:.2f} kWh")
 print(f"Tiempo total de espera acumulado: {formato_hora(estacion.tiempo_espera_total)}")
 print(f"Costo total de operación (eléctrico): S/. {estacion.costo_total_electrico:.2f}")
-# Comparación de costos entre electricidad y petróleo
-print(f"\nCosto total usando electricidad: S/. {estacion.costo_total_electrico:.2f}")
-print(f"Costo total usando petróleo: S/. {estacion.costo_total_petroleo:.2f}")
-
-if estacion.costo_total_electrico < estacion.costo_total_petroleo:
-    print("Es más barato operar con electricidad.")
-else:
-    print("Es más barato operar con petróleo.")
 
 
