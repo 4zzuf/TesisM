@@ -1,7 +1,7 @@
 class ParametrosEstacion:
     """Parámetros de la estación de carga."""
 
-    def __init__(self, capacidad_estacion=20, total_baterias=25, baterias_iniciales=20):
+    def __init__(self, capacidad_estacion=15, total_baterias=25, baterias_iniciales=20):
         self.capacidad_estacion = capacidad_estacion
         self.total_baterias = total_baterias
         self.baterias_iniciales = baterias_iniciales
