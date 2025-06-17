@@ -1,7 +1,7 @@
 class ParametrosSimulacion:
     """Parámetros generales de la simulación."""
 
-    def __init__(self, duracion=200, max_autobuses=30, semilla=42):
+    def __init__(self, duracion=500, max_autobuses=30, semilla=42):
         self.duracion = duracion
         self.max_autobuses = max_autobuses
         self.semilla = semilla

@@ -4,7 +4,7 @@ from modelo import param_simulacion, param_economicos
 
 
 def main():
-    """Muestra un gráfico de barras con el ahorro total de CO2."""
+    """Muestra un gráfico comparando emisiones y el ahorro total de CO2."""
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
     estacion = modelo.ejecutar_simulacion()
@@ -20,9 +20,11 @@ def main():
     ahorro = emis_gas - emis_elec
 
     plt.figure(figsize=(6, 4))
-    plt.bar(['Ahorro de CO2'], [ahorro])
+    etiquetas = ['Electricidad', 'Gas natural', 'Ahorro de CO2']
+    valores = [emis_elec, emis_gas, ahorro]
+    plt.bar(etiquetas, valores, color=['tab:blue', 'tab:orange', 'tab:green'])
     plt.ylabel('Toneladas de CO2 por mes')
-    plt.title('Diferencia total de emisiones')
+    plt.title('Comparación de emisiones mensuales')
     plt.tight_layout()
     plt.show()
 

@@ -37,7 +37,10 @@ class EstacionIntercambio:
     def __init__(self, env, capacidad_estacion):
         self.env = env
         self.estaciones = simpy.Resource(env, capacity=capacidad_estacion)
-        self.baterias_disponibles = param_estacion.baterias_iniciales  # Baterías previamente cargadas
+        self.baterias_disponibles = param_estacion.baterias_iniciales  # Baterías cargadas listas
+        # Baterías descargadas a la espera de carga
+        self.baterias_descargadas = param_estacion.total_baterias - param_estacion.baterias_iniciales
+        self.baterias_cargando = 0  # Cantidad de baterías actualmente en carga
         self.tiempo_espera_total = 0  # Tiempo total de espera acumulado
         self.energia_total_cargada = 0  # Energía total consumida para cargar baterías
         self.costo_total_electrico = 0  # Costo total de carga eléctrica
@@ -68,18 +71,9 @@ class EstacionIntercambio:
             self.costo_total_electrico += costo_carga
 
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
-        inicio_espera = self.env.now
-        while self.baterias_disponibles <= 0:  # Si no hay baterías disponibles
-            if VERBOSE:
-                print(f"Autobús {autobuses_id} espera porque no hay baterías disponibles en {formato_hora(self.env.now)}")
-            yield self.env.timeout(10 / 60)  # Espera 10 minutos antes de intentar nuevamente
-
-        # Registra el tiempo total de espera acumulado
-        tiempo_espera = self.env.now - inicio_espera
-        self.tiempo_espera_total += tiempo_espera
-
-        # Proceso de reemplazo
+        """Realiza el intercambio asumiendo que hay batería disponible."""
         self.baterias_disponibles -= 1
+        self.baterias_descargadas += 1
         capacidad_requerida = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
         tiempo_reemplazo = 4 / 60  # 4 minutos en horas
         hora_final = self.env.now + tiempo_reemplazo  # Hora después del intercambio
@@ -109,21 +103,25 @@ class EstacionIntercambio:
 
     def cargar_bateria(self):
         while True:
-            # Hora actual en la simulación
             hora_actual = int(self.env.now % 24)
-            if self.baterias_disponibles < param_estacion.total_baterias:
+            if self.baterias_descargadas > 0 and (
+                self.baterias_disponibles + self.baterias_cargando
+                < param_estacion.total_baterias
+            ):
                 with self.estaciones.request() as req:
-                    yield req  # Adquiere un cargador disponible
+                    yield req
+                    self.baterias_descargadas -= 1
+                    self.baterias_cargando += 1
                     capacidad_carga = param_bateria.capacidad
                     tiempo_carga = capacidad_carga / param_bateria.potencia_carga
 
-                    if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
+                    if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
                         costo_carga = capacidad_carga * param_economicos.costo_punta
                         if VERBOSE:
                             print(
                                 f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})"
                             )
-                    else:  # Hora fuera de punta
+                    else:
                         costo_carga = capacidad_carga * param_economicos.costo_normal
                         if VERBOSE:
                             print(
@@ -131,11 +129,12 @@ class EstacionIntercambio:
                             )
 
                     yield self.env.timeout(tiempo_carga)
+                    self.baterias_cargando -= 1
                     self.baterias_disponibles += 1
                     self.energia_total_cargada += capacidad_carga
                     self.costo_total_electrico += costo_carga
             else:
-                yield self.env.timeout(10 / 60)  # Espera 10 minutos antes de verificar nuevamente
+                yield self.env.timeout(10 / 60)
 
 
 # Procesos para simular la llegada de autobuses
@@ -160,6 +159,9 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
     hora_actual = int(env.now % 24)
     while True:
         llegada = env.now
+        while estacion.baterias_disponibles <= 0:
+            yield env.timeout(10 / 60)
+
         with estacion.estaciones.request() as req:
             yield req
             tiempo_espera = env.now - llegada
