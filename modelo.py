@@ -41,18 +41,23 @@ class EstacionIntercambio:
         # independiente, por lo que no se requiere un recurso adicional.
         self.estaciones = simpy.Resource(env, capacity=capacidad_estacion)
 
-        # Inventario de baterías cargadas disponible para los autobuses
-        self.baterias_reserva = simpy.Container(
+        # Inventario de baterías cargadas disponible para los autobuses.
+        # Se almacenan como el porcentaje de SoC que tienen, 100% significa
+        # una batería completamente cargada.
+        self.baterias_reserva = simpy.Store(
             env,
             capacity=param_estacion.total_baterias,
-            init=param_estacion.baterias_iniciales,
         )
-        # Baterías descargadas a la espera de ser cargadas nuevamente
-        self.baterias_descargadas = simpy.Container(
+
+        # Baterías descargadas a la espera de ser cargadas nuevamente.
+        self.baterias_descargadas = simpy.Store(
             env,
             capacity=param_estacion.total_baterias,
-            init=param_estacion.total_baterias - param_estacion.baterias_iniciales,
         )
+
+        # Inicializar los inventarios.
+        self.baterias_reserva.items = [100 for _ in range(param_estacion.baterias_iniciales)]
+        self.baterias_descargadas.items = [30 for _ in range(param_estacion.total_baterias - param_estacion.baterias_iniciales)]
         self.baterias_cargando = 0  # Cantidad de baterías actualmente en carga
         self.tiempo_espera_total = 0  # Tiempo total de espera acumulado
         self.energia_total_cargada = 0  # Energía total consumida para cargar baterías
@@ -87,8 +92,10 @@ class EstacionIntercambio:
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
         """Realiza el intercambio asumiendo que hay batería disponible."""
         # Tomar una batería cargada de la reserva y depositar la usada
-        yield self.baterias_reserva.get(1)
-        yield self.baterias_descargadas.put(1)
+        # ``soc_inicial`` corresponde al nivel de carga de la batería usada
+        # cuando el autobús llega a la estación.
+        _ = yield self.baterias_reserva.get()
+        yield self.baterias_descargadas.put(soc_inicial)
         capacidad_requerida = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
         tiempo_reemplazo = 4 / 60  # 4 minutos en horas
         hora_final = self.env.now + tiempo_reemplazo  # Hora después del intercambio
@@ -117,11 +124,13 @@ class EstacionIntercambio:
         """Proceso individual de un cargador."""
         while True:
             # Esperar hasta disponer de una batería descargada
-            yield self.baterias_descargadas.get(1)
+            soc_actual = yield self.baterias_descargadas.get()
             self.baterias_cargando += 1
 
             hora_actual = int(self.env.now % 24)
-            capacidad_carga = param_bateria.capacidad
+            capacidad_carga = (
+                (param_bateria.soc_objetivo - soc_actual) / 100
+            ) * param_bateria.capacidad
             tiempo_carga = capacidad_carga / param_bateria.potencia_carga
 
             if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
@@ -140,7 +149,7 @@ class EstacionIntercambio:
             yield self.env.timeout(tiempo_carga)
 
             self.baterias_cargando -= 1
-            yield self.baterias_reserva.put(1)
+            yield self.baterias_reserva.put(param_bateria.soc_objetivo)
             self.energia_total_cargada += capacidad_carga
             self.costo_total_electrico += costo_carga
 
@@ -168,7 +177,7 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
     while True:
         llegada = env.now
         ultimo_aviso = env.now
-        while estacion.baterias_reserva.level <= 0:
+        while len(estacion.baterias_reserva.items) <= 0:
             if VERBOSE and env.now - ultimo_aviso >= 10 / 60:
                 print(
                     f"Autobús {autobuses_id} espera batería desde {formato_hora(llegada)}"
