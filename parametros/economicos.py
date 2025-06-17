@@ -5,7 +5,7 @@ class ParametrosEconomicos:
         self,
         costo_punta=0.28,
         costo_normal=0.238,
-        costo_gas_kwh=0.12,
+        costo_gas_kwh=0.10,
         horas_punta=(18, 23),
         factor_co2_gas=0.25,
         factor_co2_elec=0.20,
