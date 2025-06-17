@@ -45,6 +45,7 @@ class EstacionIntercambio:
         self.energia_punta_autobuses = 0  # Energía consumida en hora punta por autobuses
         self.energia_fuera_punta_autobuses = 0  # Energía consumida fuera de hora punta por autobuses
         self.energia_punta_electrica = 0  # Energía consumida en hora punta de electricidad
+        self.intercambios_realizados = 0  # Cantidad de reemplazos efectuados
 
         # Costo de cargar las baterías iniciales
         self.cargar_baterias_iniciales()
@@ -83,6 +84,7 @@ class EstacionIntercambio:
                 f"(SoC inicial: {soc_inicial:.2f}%). Hora final: {formato_hora(hora_final)}"
             )
         yield self.env.timeout(tiempo_reemplazo)
+        self.intercambios_realizados += 1
 
         # Clasificar consumo de energía según hora punta de autobuses
         if 7 <= hora_actual < 9 or 18 <= hora_actual < 20:
@@ -130,13 +132,11 @@ class EstacionIntercambio:
 
 
 # Procesos para simular la llegada de autobuses
-def llegada_autobuses(env, estacion, max_autobuses, intervalo=0.25):
-    """Genera la llegada de autobuses en intervalos dados."""
+def llegada_autobuses(env, estacion, max_autobuses, intervalo=0.25, tiempo_ruta=2):
+    """Genera la llegada inicial de autobuses y crea procesos cíclicos."""
     yield env.timeout(5)  # Los autobuses comienzan a llegar a las 5:00 AM
-    autobuses_id = 0
-    while autobuses_id < max_autobuses:
+    for autobuses_id in range(1, max_autobuses + 1):
         yield env.timeout(intervalo)
-        autobuses_id += 1
         hora_actual = int(env.now % 24)
         soc_inicial = calcular_soc_inicial(hora_actual)
         if VERBOSE:
@@ -144,22 +144,37 @@ def llegada_autobuses(env, estacion, max_autobuses, intervalo=0.25):
                 f"Autobús {autobuses_id} llega a la estación en {formato_hora(env.now)} "
                 f"(Hora actual: {hora_actual}, SoC inicial: {soc_inicial:.2f}%)"
             )
-        env.process(proceso_autobus(env, estacion, autobuses_id, soc_inicial, hora_actual))
+        env.process(proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta))
 
 
 # Proceso para simular el flujo del autobús
-def proceso_autobus(env, estacion, autobuses_id, soc_inicial, hora_actual):
-    llegada = env.now
-    with estacion.estaciones.request() as req:
-        yield req
-        tiempo_espera = env.now - llegada
-        estacion.tiempo_espera_total += tiempo_espera
+def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
+    """Simula un autobús que intercambia baterías y vuelve tras su ruta."""
+    hora_actual = int(env.now % 24)
+    while True:
+        llegada = env.now
+        with estacion.estaciones.request() as req:
+            yield req
+            tiempo_espera = env.now - llegada
+            estacion.tiempo_espera_total += tiempo_espera
+            if VERBOSE:
+                print(
+                    f"Autobús {autobuses_id} entra a la estación en {formato_hora(env.now)} "
+                    f"tras esperar {formato_hora(tiempo_espera)}"
+                )
+            yield env.process(
+                estacion.reemplazar_bateria(autobuses_id, soc_inicial, hora_actual)
+            )
+
+        # El autobús sale a su ruta y regresa con la batería descargada
+        yield env.timeout(tiempo_ruta)
+        soc_inicial = random.uniform(20, 30)
+        hora_actual = int(env.now % 24)
         if VERBOSE:
             print(
-                f"Autobús {autobuses_id} entra a la estación en {formato_hora(env.now)} "
-                f"tras esperar {formato_hora(tiempo_espera)}"
+                f"Autobús {autobuses_id} regresa a la estación en {formato_hora(env.now)} "
+                f"con SoC {soc_inicial:.2f}%"
             )
-        yield env.process(estacion.reemplazar_bateria(autobuses_id, soc_inicial, hora_actual))
 
 
 # Configuración de la simulación
@@ -167,14 +182,25 @@ def ejecutar_simulacion(
     max_autobuses=param_simulacion.max_autobuses,
     duracion=param_simulacion.duracion,
     intervalo_llegada=0.25,
+    tiempo_ruta=2,
 ):
-    """Ejecuta la simulación y devuelve la estación resultante."""
+    """Ejecuta la simulación y devuelve la estación resultante.
+
+    ``tiempo_ruta`` indica la duración en horas de la ruta de cada autobús
+    antes de volver a solicitar un intercambio de batería.
+    """
     random.seed(param_simulacion.semilla)
     env = simpy.Environment()
     estacion = EstacionIntercambio(env, param_estacion.capacidad_estacion)
 
     env.process(
-        llegada_autobuses(env, estacion, max_autobuses=max_autobuses, intervalo=intervalo_llegada)
+        llegada_autobuses(
+            env,
+            estacion,
+            max_autobuses=max_autobuses,
+            intervalo=intervalo_llegada,
+            tiempo_ruta=tiempo_ruta,
+        )
     )
     env.process(estacion.cargar_bateria())
 

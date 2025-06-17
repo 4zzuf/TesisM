@@ -15,8 +15,13 @@ def tiempo_promedio_para_autobuses(numero_autobuses):
         max_autobuses=numero_autobuses, intervalo_llegada=0
     )
     modelo.VERBOSE = anterior
-    tiempo_total = estacion.tiempo_espera_total + numero_autobuses * TIEMPO_REEMPLAZO
-    return (tiempo_total / numero_autobuses) * 60
+    if estacion.intercambios_realizados == 0:
+        return 0
+    tiempo_total = (
+        estacion.tiempo_espera_total
+        + estacion.intercambios_realizados * TIEMPO_REEMPLAZO
+    )
+    return (tiempo_total / estacion.intercambios_realizados) * 60
 
 def main():
     max_autos = param_simulacion.max_autobuses

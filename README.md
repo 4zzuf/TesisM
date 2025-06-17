@@ -5,9 +5,10 @@ Este repositorio contiene utilidades para simulación.
 ## Gráfico de eficiencia operativa
 
 Ejecuta el script `tiempos_intercambio.py` para visualizar el tiempo de
-operación promedio por autobús. El valor incluye la espera en cola y el
-intercambio de la batería (4 minutos) y se expresa en minutos. El script
-agrupa a todos los autobuses de la simulación para reflejar la cola:
+operación promedio por autobús. Cada vehículo efectúa una ruta de dos horas y
+regresa con la batería al 20‑30 % de carga para un nuevo intercambio. El valor
+incluye la espera en cola y el reemplazo de 4 minutos, expresado en minutos. El
+script agrupa a todos los autobuses de la simulación para reflejar la cola:
 
 ```bash
 python tiempos_intercambio.py
