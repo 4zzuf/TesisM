@@ -6,7 +6,7 @@ class ParametrosBateria:
         potencia_carga=100,
         capacidad=500,
         soc_objetivo=100,
-        factor_degradacion=0.995,
+        factor_degradacion=0.9998888,
     ):
         self.potencia_carga = potencia_carga
         self.capacidad = capacidad
