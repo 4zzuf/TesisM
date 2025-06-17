@@ -36,7 +36,12 @@ def calcular_soc_inicial(hora_actual):
 class EstacionIntercambio:
     def __init__(self, env, capacidad_estacion):
         self.env = env
+        # Recursos separados para intercambios y cargadores
+        # "estaciones" representa los puntos donde los autobuses realizan el
+        # cambio de batería, mientras que "cargadores" son los conectores que
+        # recargan las baterías descargadas.
         self.estaciones = simpy.Resource(env, capacity=capacidad_estacion)
+        self.cargadores = simpy.Resource(env, capacity=capacidad_estacion)
         self.baterias_disponibles = param_estacion.baterias_iniciales  # Baterías cargadas listas
         # Baterías descargadas a la espera de carga
         self.baterias_descargadas = param_estacion.total_baterias - param_estacion.baterias_iniciales
@@ -106,7 +111,8 @@ class EstacionIntercambio:
                 self.baterias_disponibles + self.baterias_cargando
                 < param_estacion.total_baterias
             ):
-                with self.estaciones.request() as req:
+                # Utiliza un cargador disponible para recargar la batería
+                with self.cargadores.request() as req:
                     yield req
                     self.baterias_descargadas -= 1
                     self.baterias_cargando += 1
