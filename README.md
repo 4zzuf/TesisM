@@ -2,13 +2,12 @@
 
 Este repositorio contiene utilidades para simulación.
 
-## Gráfico de tiempo de intercambio
+## Gráfico de eficiencia operativa
 
-Ejecuta el script `tiempos_intercambio.py` para generar un gráfico que muestra
-el tiempo promedio de intercambio según cuántos autobuses llegan a la estación.
-Cada intercambio dura 4 minutos más el tiempo de espera de los autobuses cuando
-las estaciones de carga están ocupadas. El script agrupa a todos los autobuses
-de la simulación para reflejar esta cola:
+Ejecuta el script `tiempos_intercambio.py` para visualizar el tiempo de
+operación promedio por autobús. El valor incluye la espera en cola y el
+intercambio de la batería (4 minutos) y se expresa en minutos. El script
+agrupa a todos los autobuses de la simulación para reflejar la cola:
 
 ```bash
 python tiempos_intercambio.py
