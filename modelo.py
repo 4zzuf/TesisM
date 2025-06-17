@@ -56,6 +56,8 @@ class EstacionIntercambio:
 
             self.energia_total_cargada += capacidad_carga
             self.costo_total_electrico += costo_carga
+            # La capacidad de cada batería se reduce por degradación tras la recarga
+            param_bateria.capacidad *= param_bateria.factor_degradacion
 
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
         inicio_espera = self.env.now
@@ -108,6 +110,7 @@ class EstacionIntercambio:
                     self.baterias_disponibles += 1
                     self.energia_total_cargada += capacidad_carga
                     self.costo_total_electrico += costo_carga
+                    param_bateria.capacidad *= param_bateria.factor_degradacion
             else:
                 yield self.env.timeout(1)  # Espera 1 hora antes de verificar nuevamente
 
