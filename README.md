@@ -15,6 +15,20 @@ python tiempos_intercambio.py
 
 Se abrirá una ventana con la gráfica correspondiente.
 
+## Gráficos de costos y consumos
+
+El script `graficos_costos.py` genera tres gráficos:
+
+1. Costo de operación con electricidad según el número de autobuses.
+2. Comparación de costos usando electricidad y gas natural.
+3. Consumo eléctrico en hora punta y fuera de punta.
+
+Ejecuta:
+
+```bash
+python graficos_costos.py
+```
+
 ## Ejecutar las pruebas
 
 Instala `pytest` y ejecuta las pruebas con:
