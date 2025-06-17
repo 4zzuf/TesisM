@@ -75,7 +75,7 @@ class EstacionIntercambio:
         # Proceso de reemplazo
         self.baterias_disponibles -= 1
         capacidad_requerida = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
-        tiempo_reemplazo = 0.083  # 5 minutos en horas
+        tiempo_reemplazo = 4 / 60  # 4 minutos en horas
         hora_final = self.env.now + tiempo_reemplazo  # Hora después del intercambio
         if VERBOSE:
             print(
@@ -130,11 +130,12 @@ class EstacionIntercambio:
 
 
 # Procesos para simular la llegada de autobuses
-def llegada_autobuses(env, estacion, max_autobuses):
+def llegada_autobuses(env, estacion, max_autobuses, intervalo=0.25):
+    """Genera la llegada de autobuses en intervalos dados."""
     yield env.timeout(5)  # Los autobuses comienzan a llegar a las 5:00 AM
     autobuses_id = 0
     while autobuses_id < max_autobuses:
-        yield env.timeout(0.25)  # Intervalo de 15 minutos entre llegadas
+        yield env.timeout(intervalo)
         autobuses_id += 1
         hora_actual = int(env.now % 24)
         soc_inicial = calcular_soc_inicial(hora_actual)
@@ -162,13 +163,19 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, hora_actual):
 
 
 # Configuración de la simulación
-def ejecutar_simulacion(max_autobuses=param_simulacion.max_autobuses, duracion=param_simulacion.duracion):
+def ejecutar_simulacion(
+    max_autobuses=param_simulacion.max_autobuses,
+    duracion=param_simulacion.duracion,
+    intervalo_llegada=0.25,
+):
     """Ejecuta la simulación y devuelve la estación resultante."""
     random.seed(param_simulacion.semilla)
     env = simpy.Environment()
     estacion = EstacionIntercambio(env, param_estacion.capacidad_estacion)
 
-    env.process(llegada_autobuses(env, estacion, max_autobuses=max_autobuses))
+    env.process(
+        llegada_autobuses(env, estacion, max_autobuses=max_autobuses, intervalo=intervalo_llegada)
+    )
     env.process(estacion.cargar_bateria())
 
     env.run(until=duracion)

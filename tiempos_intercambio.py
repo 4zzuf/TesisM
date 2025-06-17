@@ -4,7 +4,7 @@ import modelo
 
 from modelo import param_simulacion
 
-TIEMPO_REEMPLAZO = 0.083  # Tiempo fijo del intercambio en horas
+TIEMPO_REEMPLAZO = 4 / 60  # Tiempo fijo del intercambio en horas
 
 def tiempo_promedio_para_autobuses(numero_autobuses):
     """Ejecuta la simulación para cierto número de autobuses y devuelve
@@ -12,7 +12,9 @@ def tiempo_promedio_para_autobuses(numero_autobuses):
     # Desactivar la verbosidad durante las simulaciones
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
-    estacion = modelo.ejecutar_simulacion(max_autobuses=numero_autobuses)
+    estacion = modelo.ejecutar_simulacion(
+        max_autobuses=numero_autobuses, intervalo_llegada=0
+    )
     modelo.VERBOSE = anterior
     tiempo_total = estacion.tiempo_espera_total + numero_autobuses * TIEMPO_REEMPLAZO
     return tiempo_total / numero_autobuses
