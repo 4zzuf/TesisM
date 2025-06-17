@@ -1,7 +1,4 @@
-import matplotlib.pyplot as plt
-
 import modelo
-
 from modelo import param_simulacion
 
 TIEMPO_REEMPLAZO = 4 / 60  # Tiempo fijo del intercambio en horas
@@ -22,6 +19,11 @@ def tiempo_promedio_para_autobuses(numero_autobuses):
     return (tiempo_total / estacion.intercambios_realizados) * 60
 
 def main():
+    # Importar matplotlib solo cuando se ejecuta directamente para
+    # evitar dependencias innecesarias al utilizar este módulo desde
+    # otros scripts o durante las pruebas.
+    import matplotlib.pyplot as plt
+
     max_autos = param_simulacion.max_autobuses
     valores = list(range(1, max_autos + 1))
     tiempos = [tiempo_promedio_para_autobuses(n) for n in valores]
