@@ -8,7 +8,7 @@ class ParametrosEconomicos:
         costo_gas_kwh=0.12,
         horas_punta=(18, 23),
         factor_co2_gas=0.25,
-        factor_co2_elec=0.15,
+        factor_co2_elec=0.20,
     ):
         self.costo_punta = costo_punta
         self.costo_normal = costo_normal
