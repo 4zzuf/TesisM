@@ -2,6 +2,8 @@
 
 Este repositorio contiene utilidades para simulación.
 
+Las simulaciones por defecto abarcan 500 horas de operación.
+
 ## Gráfico de eficiencia operativa
 
 Ejecuta el script `tiempos_intercambio.py` para visualizar el tiempo de
@@ -28,6 +30,15 @@ Ejecuta:
 
 ```bash
 python graficos_costos.py
+```
+
+## Ahorro de emisiones
+
+Utiliza `graficos_emisiones.py` para estimar el ahorro mensual de CO₂ al
+emplear autobuses eléctricos frente a unidades a gas natural:
+
+```bash
+python graficos_emisiones.py
 ```
 
 ## Ejecutar las pruebas

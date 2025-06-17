@@ -42,6 +42,7 @@ class EstacionIntercambio:
         self.energia_total_cargada = 0  # Energía total consumida para cargar baterías
         self.costo_total_electrico = 0  # Costo total de carga eléctrica
         self.costo_total_gas = 0  # Costo total si se usara gas natural
+        self.energia_total_gas = 0  # Energía total consumida si se usara gas
         self.energia_punta_autobuses = 0  # Energía consumida en hora punta por autobuses
         self.energia_fuera_punta_autobuses = 0  # Energía consumida fuera de hora punta por autobuses
         self.energia_punta_electrica = 0  # Energía consumida en hora punta de electricidad
@@ -96,8 +97,10 @@ class EstacionIntercambio:
         if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
             self.energia_punta_electrica += capacidad_requerida
 
-        # Costo si se usara gas natural
-        costo_gas = (1 - soc_inicial / 100) * param_economicos.costo_gas_completo
+        # Costos y energía equivalente si se usara gas natural
+        energia_gas = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
+        costo_gas = energia_gas * param_economicos.costo_gas_kwh
+        self.energia_total_gas += energia_gas
         self.costo_total_gas += costo_gas
 
     def cargar_bateria(self):
@@ -228,6 +231,13 @@ def imprimir_resultados(estacion):
         print("Es más barato operar con electricidad.")
     else:
         print("Es más barato operar con gas natural.")
+
+    emisiones_elec = estacion.energia_total_cargada * param_economicos.factor_co2_elec
+    emisiones_gas = estacion.energia_total_gas * param_economicos.factor_co2_gas
+    ahorro = emisiones_gas - emisiones_elec
+    print(f"Emisiones con electricidad: {emisiones_elec:.2f} kg CO2")
+    print(f"Emisiones con gas natural: {emisiones_gas:.2f} kg CO2")
+    print(f"Ahorro de CO2: {ahorro:.2f} kg")
 
 
 if __name__ == "__main__":
