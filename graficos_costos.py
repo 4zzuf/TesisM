@@ -8,14 +8,13 @@ def datos_para_autobuses(numero_autobuses):
     """Devuelve costos y consumos para la cantidad dada de autobuses."""
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
-    estacion = modelo.ejecutar_simulacion(
-        max_autobuses=numero_autobuses, intervalo_llegada=0
-    )
+    estacion = modelo.ejecutar_simulacion(max_autobuses=numero_autobuses)
     modelo.VERBOSE = anterior
-    costo_electrico = estacion.costo_total_electrico
-    costo_gas = estacion.costo_total_gas
-    energia_punta = estacion.energia_punta_electrica
-    energia_fuera = estacion.energia_total_cargada - estacion.energia_punta_electrica
+    factor = 720 / param_simulacion.duracion
+    costo_electrico = estacion.costo_total_electrico * factor
+    costo_gas = estacion.costo_total_gas * factor
+    energia_punta = estacion.energia_punta_electrica * factor
+    energia_fuera = (estacion.energia_total_cargada - estacion.energia_punta_electrica) * factor
     return costo_electrico, costo_gas, energia_punta, energia_fuera
 
 def main():

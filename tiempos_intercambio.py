@@ -11,9 +11,7 @@ def tiempo_promedio_para_autobuses(numero_autobuses):
     # Desactivar la verbosidad durante las simulaciones
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
-    estacion = modelo.ejecutar_simulacion(
-        max_autobuses=numero_autobuses, intervalo_llegada=0
-    )
+    estacion = modelo.ejecutar_simulacion(max_autobuses=numero_autobuses)
     modelo.VERBOSE = anterior
     if estacion.intercambios_realizados == 0:
         return 0

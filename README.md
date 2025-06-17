@@ -26,6 +26,9 @@ El script `graficos_costos.py` genera tres gráficos:
 2. Comparación de costos usando electricidad y gas natural.
 3. Consumo eléctrico en hora punta y fuera de punta.
 
+Los valores se escalan a un mes de operación para evitar distorsiones cuando
+la simulación se ejecuta por 500 horas.
+
 Ejecuta:
 
 ```bash
@@ -34,8 +37,9 @@ python graficos_costos.py
 
 ## Ahorro de emisiones
 
-Utiliza `graficos_emisiones.py` para estimar el ahorro mensual de CO₂ al
-emplear autobuses eléctricos frente a unidades a gas natural:
+Ejecuta `graficos_emisiones.py` para comparar las emisiones mensuales de CO₂
+entre electricidad y gas natural. El script también muestra el ahorro mensual
+obtenido al usar baterías en lugar de gas:
 
 ```bash
 python graficos_emisiones.py
