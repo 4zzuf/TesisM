@@ -31,15 +31,10 @@ def calcular_soc_inicial(hora_actual):
 
 
 class Bateria:
-    """Representa una batería individual con degradación."""
+    """Representa una batería individual."""
 
-    def __init__(self, capacidad_inicial, factor_degradacion):
+    def __init__(self, capacidad_inicial):
         self.capacidad = capacidad_inicial
-        self.factor_degradacion = factor_degradacion
-
-    def degradar(self):
-        """Aplica la degradación luego de una recarga."""
-        self.capacidad *= self.factor_degradacion
 
 
 class EstacionIntercambio:
@@ -65,7 +60,7 @@ class EstacionIntercambio:
     def _inicializar_baterias(self):
         """Genera las baterías y aplica la primera carga."""
         for i in range(param_estacion.total_baterias):
-            bateria = Bateria(param_bateria.capacidad, param_bateria.factor_degradacion)
+            bateria = Bateria(param_bateria.capacidad)
             if i < param_estacion.baterias_iniciales:
                 self._cargar_bateria_inicial(bateria)
                 self.baterias_disponibles.append(bateria)
@@ -83,7 +78,6 @@ class EstacionIntercambio:
             costo_carga = capacidad_carga * param_economicos.costo_normal
         self.energia_total_cargada += capacidad_carga
         self.costo_total_electrico += costo_carga
-        bateria.degradar()
 
 
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
@@ -102,7 +96,7 @@ class EstacionIntercambio:
         if self.baterias_en_uso:
             bateria_descargada = self.baterias_en_uso.pop(0)
         else:
-            bateria_descargada = Bateria(param_bateria.capacidad, param_bateria.factor_degradacion)
+            bateria_descargada = Bateria(param_bateria.capacidad)
         self.baterias_descargadas.append(bateria_descargada)
 
         # Batería cargada que se entrega al autobús
@@ -151,7 +145,6 @@ class EstacionIntercambio:
                     yield self.env.timeout(tiempo_carga)
                     self.energia_total_cargada += capacidad_carga
                     self.costo_total_electrico += costo_carga
-                    bateria.degradar()
                     self.baterias_disponibles.append(bateria)
             else:
                 yield self.env.timeout(1)
