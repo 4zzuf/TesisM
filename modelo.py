@@ -95,11 +95,7 @@ class EstacionIntercambio:
         if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:  # Hora punta eléctrica
             self.energia_punta_electrica += capacidad_requerida
 
-        # Costos y energía equivalente si se usara gas natural
-        energia_gas = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
-        costo_gas = energia_gas * param_economicos.costo_gas_kwh
-        self.energia_total_gas += energia_gas
-        self.costo_total_gas += costo_gas
+        # La estimación de consumo de gas se calcula tras la ruta del autobús
 
     def cargar_bateria(self):
         while True:
@@ -177,6 +173,10 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
 
         # El autobús sale a su ruta y regresa con la batería descargada
         yield env.timeout(tiempo_ruta)
+        # Consumo de gas equivalente durante la ruta
+        energia_gas = param_operacion.consumo_gas_hora * tiempo_ruta
+        estacion.energia_total_gas += energia_gas
+        estacion.costo_total_gas += energia_gas * param_economicos.costo_gas_kwh
         soc_inicial = random.uniform(20, 30)
         hora_actual = int(env.now % 24)
         if VERBOSE:

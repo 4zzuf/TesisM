@@ -33,6 +33,23 @@ def main():
     plt.tight_layout()
     plt.show()
 
+    # Costo por hora de operación usando el máximo de autobuses
+    anterior = modelo.VERBOSE
+    modelo.VERBOSE = False
+    estacion = modelo.ejecutar_simulacion()
+    modelo.VERBOSE = anterior
+    costo_e_hora = estacion.costo_total_electrico / param_simulacion.duracion
+    costo_g_hora = estacion.costo_total_gas / param_simulacion.duracion
+
+    plt.figure(figsize=(6, 4))
+    etiquetas = ['Electricidad/hora', 'Gas natural/hora']
+    valores_bar = [costo_e_hora, costo_g_hora]
+    plt.bar(etiquetas, valores_bar, color=['tab:blue', 'tab:orange'])
+    plt.ylabel('Costo (S/./h)')
+    plt.title('Costo promedio por hora de operación')
+    plt.tight_layout()
+    plt.show()
+
     # Comparación de electricidad vs gas
     plt.figure(figsize=(8, 4))
     plt.plot(valores, costos_elec, marker='o', label='Electricidad')
