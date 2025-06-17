@@ -1,18 +1,38 @@
 import matplotlib.pyplot as plt
 import modelo
-from modelo import param_simulacion
+from modelo import param_simulacion, param_economicos, param_estacion, param_operacion
 
 TIEMPO_REEMPLAZO = 4 / 60  # Tiempo de intercambio de la batería en horas
 
-def datos_para_autobuses(numero_autobuses):
+def costo_gas_teorico(numero_autobuses, tiempo_ruta=2):
+    """Calcula el costo de operar los autobuses con gas natural."""
+    ciclos = param_simulacion.duracion / tiempo_ruta
+    energia_total = numero_autobuses * param_operacion.consumo_gas_hora * tiempo_ruta * ciclos
+    return energia_total * param_economicos.costo_gas_kwh
+
+
+def datos_para_autobuses(numero_autobuses, tiempo_ruta=2):
     """Devuelve costos y consumos para la cantidad dada de autobuses."""
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
+
+    # Aumenta temporalmente la capacidad para evitar colas excesivas
+    cap_ant = param_estacion.capacidad_estacion
+    tot_ant = param_estacion.total_baterias
+    ini_ant = param_estacion.baterias_iniciales
+    param_estacion.actualizar(
+        capacidad=max(numero_autobuses, cap_ant),
+        total=max(numero_autobuses * 2, tot_ant),
+        iniciales=max(numero_autobuses, ini_ant),
+    )
     estacion = modelo.ejecutar_simulacion(max_autobuses=numero_autobuses)
+    param_estacion.actualizar(capacidad=cap_ant, total=tot_ant, iniciales=ini_ant)
+
     modelo.VERBOSE = anterior
+
     factor = 720 / param_simulacion.duracion
     costo_electrico = estacion.costo_total_electrico * factor
-    costo_gas = estacion.costo_total_gas * factor
+    costo_gas = costo_gas_teorico(numero_autobuses, tiempo_ruta) * factor
     energia_punta = estacion.energia_punta_electrica * factor
     energia_fuera = (estacion.energia_total_cargada - estacion.energia_punta_electrica) * factor
     return costo_electrico, costo_gas, energia_punta, energia_fuera

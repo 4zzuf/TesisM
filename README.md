@@ -33,11 +33,14 @@ con gas natural frente a electricidad.
 Los valores se escalan a un mes de operación para evitar distorsiones cuando
 la simulación se ejecuta por 500 horas.
 
-Es posible notar que el costo eléctrico disminuye ligeramente al pasar de
-cuatro a cinco autobuses porque el incremento de la cola reduce la cantidad de
-ciclos de carga que la estación puede completar por hora. A partir de unos diez
-vehículos la capacidad de los cargadores queda saturada y los costos totales se
-mantienen casi constantes.
+Para que los costos crezcan de forma continua al aumentar la flota,
+`graficos_costos.py` amplía temporalmente la capacidad de carga de la estación
+según la cantidad de autobuses evaluada. De esta manera no se genera la caída de
+costos al pasar de cuatro a cinco vehículos ni la estabilización por encima de
+diez.
+
+El costo de operar con gas natural se calcula aparte empleando el consumo
+promedio de cada autobús y no depende de los valores de electricidad.
 
 Ejecuta:
 
