@@ -4,7 +4,7 @@ Este repositorio contiene utilidades para simulación.
 
 Las simulaciones por defecto abarcan 500 horas de operación (alrededor de
 21 días). Las métricas impresas convierten esa duración a días para facilitar
-la interpretación. Por defecto se consideran hasta 30 autobuses en la estación.
+la interpretación. Por defecto se consideran hasta 20 autobuses en la estación.
 
 ## Gráfico de eficiencia operativa
 

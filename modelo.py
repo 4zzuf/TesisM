@@ -157,7 +157,13 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
     hora_actual = int(env.now % 24)
     while True:
         llegada = env.now
+        ultimo_aviso = env.now
         while estacion.baterias_disponibles <= 0:
+            if VERBOSE and env.now - ultimo_aviso >= 10 / 60:
+                print(
+                    f"Autobús {autobuses_id} espera batería desde {formato_hora(llegada)}"
+                )
+                ultimo_aviso = env.now
             yield env.timeout(1 / 60)
 
         with estacion.estaciones.request() as req:
