@@ -1,7 +1,7 @@
 class ParametrosBateria:
     """Parámetros relacionados a la batería."""
 
-    def __init__(self, potencia_carga=100, capacidad=500, soc_objetivo=100):
+    def __init__(self, potencia_carga=100, capacidad=300, soc_objetivo=100):
         self.potencia_carga = potencia_carga
         self.capacidad = capacidad
         self.soc_objetivo = soc_objetivo

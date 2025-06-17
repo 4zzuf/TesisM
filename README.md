@@ -4,13 +4,13 @@ Este repositorio contiene utilidades para simulación.
 
 Las simulaciones por defecto abarcan 500 horas de operación (alrededor de
 21 días). Las métricas impresas convierten esa duración a días para facilitar
-la interpretación. Por defecto se consideran hasta 20 autobuses en la estación.
+la interpretación. Por defecto se consideran hasta 30 autobuses en la estación.
 
 ## Gráfico de eficiencia operativa
 
 Ejecuta el script `tiempos_intercambio.py` para visualizar el tiempo de
 intercambio promedio de la estación según el número de autobuses. Cada vehículo
-efectúa una ruta de dos horas y regresa con la batería al 20‑30 % de carga para
+efectúa una ruta de cuatro horas y regresa con la batería al 30‑40 % de carga para
 un nuevo intercambio. El valor mostrado incluye la espera en cola y el
 reemplazo de 4 minutos, expresado en minutos:
 

@@ -132,11 +132,11 @@ class EstacionIntercambio:
                     self.energia_total_cargada += capacidad_carga
                     self.costo_total_electrico += costo_carga
             else:
-                yield self.env.timeout(10 / 60)
+                yield self.env.timeout(1 / 60)
 
 
 # Procesos para simular la llegada de autobuses
-def llegada_autobuses(env, estacion, max_autobuses, intervalo=0.25, tiempo_ruta=2):
+def llegada_autobuses(env, estacion, max_autobuses, intervalo=0.25, tiempo_ruta=4):
     """Genera la llegada inicial de autobuses y crea procesos cíclicos."""
     yield env.timeout(5)  # Los autobuses comienzan a llegar a las 5:00 AM
     for autobuses_id in range(1, max_autobuses + 1):
@@ -158,7 +158,7 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
     while True:
         llegada = env.now
         while estacion.baterias_disponibles <= 0:
-            yield env.timeout(10 / 60)
+            yield env.timeout(1 / 60)
 
         with estacion.estaciones.request() as req:
             yield req
@@ -179,7 +179,7 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
         energia_gas = param_operacion.consumo_gas_hora * tiempo_ruta
         estacion.energia_total_gas += energia_gas
         estacion.costo_total_gas += energia_gas * param_economicos.costo_gas_kwh
-        soc_inicial = random.uniform(20, 30)
+        soc_inicial = random.uniform(30, 40)
         hora_actual = int(env.now % 24)
         if VERBOSE:
             print(
@@ -193,7 +193,7 @@ def ejecutar_simulacion(
     max_autobuses=param_simulacion.max_autobuses,
     duracion=param_simulacion.duracion,
     intervalo_llegada=0.25,
-    tiempo_ruta=2,
+    tiempo_ruta=4,
 ):
     """Ejecuta la simulación y devuelve la estación resultante.
 

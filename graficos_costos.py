@@ -4,14 +4,14 @@ from modelo import param_simulacion, param_economicos, param_estacion, param_ope
 
 TIEMPO_REEMPLAZO = 4 / 60  # Tiempo de intercambio de la batería en horas
 
-def costo_gas_teorico(numero_autobuses, tiempo_ruta=2):
+def costo_gas_teorico(numero_autobuses, tiempo_ruta=4):
     """Calcula el costo de operar los autobuses con gas natural."""
     ciclos = param_simulacion.duracion / tiempo_ruta
     energia_total = numero_autobuses * param_operacion.consumo_gas_hora * tiempo_ruta * ciclos
     return energia_total * param_economicos.costo_gas_kwh
 
 
-def datos_para_autobuses(numero_autobuses, tiempo_ruta=2):
+def datos_para_autobuses(numero_autobuses, tiempo_ruta=4):
     """Devuelve costos y consumos para la cantidad dada de autobuses."""
     anterior = modelo.VERBOSE
     modelo.VERBOSE = False
