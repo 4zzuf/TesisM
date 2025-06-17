@@ -51,6 +51,10 @@ class EstacionIntercambio:
         # Costo de cargar las baterías iniciales
         self.cargar_baterias_iniciales()
 
+        # Inicia procesos de carga paralelos para cada cargador
+        for _ in range(param_estacion.capacidad_estacion):
+            self.env.process(self.cargar_bateria())
+
     def cargar_baterias_iniciales(self):
         for _ in range(param_estacion.baterias_iniciales):
             hora_actual = 0  # Asumimos que se cargaron antes del inicio de la simulación
@@ -205,8 +209,6 @@ def ejecutar_simulacion(
             tiempo_ruta=tiempo_ruta,
         )
     )
-    env.process(estacion.cargar_bateria())
-
     env.run(until=duracion)
     return estacion
 

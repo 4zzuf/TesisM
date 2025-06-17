@@ -2,7 +2,7 @@
 
 Este repositorio contiene utilidades para simulación.
 
-Las simulaciones por defecto abarcan 500 horas de operación.
+Las simulaciones por defecto abarcan 200 horas de operación.
 
 ## Gráfico de eficiencia operativa
 
@@ -27,7 +27,7 @@ El script `graficos_costos.py` genera tres gráficos:
 3. Consumo eléctrico en hora punta y fuera de punta.
 
 Los valores se escalan a un mes de operación para evitar distorsiones cuando
-la simulación se ejecuta por 500 horas.
+la simulación se ejecuta por 200 horas.
 
 Ejecuta:
 
@@ -37,9 +37,10 @@ python graficos_costos.py
 
 ## Ahorro de emisiones
 
-Ejecuta `graficos_emisiones.py` para comparar las emisiones mensuales de CO₂
-entre electricidad y gas natural. El script también muestra el ahorro mensual
-obtenido al usar baterías en lugar de gas:
+Ejecuta `graficos_emisiones.py` para visualizar el ahorro total de emisiones de
+CO₂ en un mes. El script ejecuta la simulación con la flota completa y muestra
+en una gráfica de barras la diferencia entre operar con gas natural y con
+baterías:
 
 ```bash
 python graficos_emisiones.py
