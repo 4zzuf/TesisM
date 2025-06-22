@@ -36,10 +36,28 @@ def calcular_soc_inicial(hora_actual):
 class EstacionIntercambio:
     def __init__(self, env, capacidad_estacion):
         self.env = env
+        # "estaciones" representa los puntos donde los autobuses realizan el
+        # cambio de batería. Cada cargador se gestiona mediante un proceso
+        # independiente, por lo que no se requiere un recurso adicional.
         self.estaciones = simpy.Resource(env, capacity=capacidad_estacion)
-        self.baterias_disponibles = param_estacion.baterias_iniciales  # Baterías cargadas listas
-        # Baterías descargadas a la espera de carga
-        self.baterias_descargadas = param_estacion.total_baterias - param_estacion.baterias_iniciales
+
+        # Inventario de baterías cargadas disponible para los autobuses.
+        # Se almacenan como el porcentaje de SoC que tienen, 100% significa
+        # una batería completamente cargada.
+        self.baterias_reserva = simpy.Store(
+            env,
+            capacity=param_estacion.total_baterias,
+        )
+
+        # Baterías descargadas a la espera de ser cargadas nuevamente.
+        self.baterias_descargadas = simpy.Store(
+            env,
+            capacity=param_estacion.total_baterias,
+        )
+
+        # Inicializar los inventarios.
+        self.baterias_reserva.items = [100 for _ in range(param_estacion.baterias_iniciales)]
+        self.baterias_descargadas.items = [30 for _ in range(param_estacion.total_baterias - param_estacion.baterias_iniciales)]
         self.baterias_cargando = 0  # Cantidad de baterías actualmente en carga
         self.tiempo_espera_total = 0  # Tiempo total de espera acumulado
         self.energia_total_cargada = 0  # Energía total consumida para cargar baterías
@@ -73,8 +91,11 @@ class EstacionIntercambio:
 
     def reemplazar_bateria(self, autobuses_id, soc_inicial, hora_actual):
         """Realiza el intercambio asumiendo que hay batería disponible."""
-        self.baterias_disponibles -= 1
-        self.baterias_descargadas += 1
+        # Tomar una batería cargada de la reserva y depositar la usada
+        # ``soc_inicial`` corresponde al nivel de carga de la batería usada
+        # cuando el autobús llega a la estación.
+        _ = yield self.baterias_reserva.get()
+        yield self.baterias_descargadas.put(soc_inicial)
         capacidad_requerida = (param_bateria.soc_objetivo - soc_inicial) / 100 * param_bateria.capacidad
         tiempo_reemplazo = 4 / 60  # 4 minutos en horas
         hora_final = self.env.now + tiempo_reemplazo  # Hora después del intercambio
@@ -100,39 +121,41 @@ class EstacionIntercambio:
         # La estimación de consumo de gas se calcula tras la ruta del autobús
 
     def cargar_bateria(self):
+        """Proceso individual de un cargador."""
         while True:
-            hora_actual = int(self.env.now % 24)
-            if self.baterias_descargadas > 0 and (
-                self.baterias_disponibles + self.baterias_cargando
-                < param_estacion.total_baterias
-            ):
-                with self.estaciones.request() as req:
-                    yield req
-                    self.baterias_descargadas -= 1
-                    self.baterias_cargando += 1
-                    capacidad_carga = param_bateria.capacidad
-                    tiempo_carga = capacidad_carga / param_bateria.potencia_carga
-
-                    if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
-                        costo_carga = capacidad_carga * param_economicos.costo_punta
-                        if VERBOSE:
-                            print(
-                                f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})"
-                            )
-                    else:
-                        costo_carga = capacidad_carga * param_economicos.costo_normal
-                        if VERBOSE:
-                            print(
-                                f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})"
-                            )
-
-                    yield self.env.timeout(tiempo_carga)
-                    self.baterias_cargando -= 1
-                    self.baterias_disponibles += 1
-                    self.energia_total_cargada += capacidad_carga
-                    self.costo_total_electrico += costo_carga
-            else:
+            # Comprobar cada minuto si hay baterías por cargar
+            if len(self.baterias_descargadas.items) == 0:
                 yield self.env.timeout(1 / 60)
+                continue
+
+            soc_actual = yield self.baterias_descargadas.get()
+            self.baterias_cargando += 1
+
+            hora_actual = int(self.env.now % 24)
+            capacidad_carga = (
+                (param_bateria.soc_objetivo - soc_actual) / 100
+            ) * param_bateria.capacidad
+            tiempo_carga = capacidad_carga / param_bateria.potencia_carga
+
+            if param_economicos.horas_punta[0] <= hora_actual < param_economicos.horas_punta[1]:
+                costo_carga = capacidad_carga * param_economicos.costo_punta
+                if VERBOSE:
+                    print(
+                        f"Se está cargando una batería en hora punta (Hora actual: {hora_actual})"
+                    )
+            else:
+                costo_carga = capacidad_carga * param_economicos.costo_normal
+                if VERBOSE:
+                    print(
+                        f"Se está cargando una batería fuera de hora punta (Hora actual: {hora_actual})"
+                    )
+
+            yield self.env.timeout(tiempo_carga)
+
+            self.baterias_cargando -= 1
+            yield self.baterias_reserva.put(param_bateria.soc_objetivo)
+            self.energia_total_cargada += capacidad_carga
+            self.costo_total_electrico += costo_carga
 
 
 # Procesos para simular la llegada de autobuses
@@ -158,7 +181,7 @@ def proceso_autobus(env, estacion, autobuses_id, soc_inicial, tiempo_ruta):
     while True:
         llegada = env.now
         ultimo_aviso = env.now
-        while estacion.baterias_disponibles <= 0:
+        while len(estacion.baterias_reserva.items) <= 0:
             if VERBOSE and env.now - ultimo_aviso >= 10 / 60:
                 print(
                     f"Autobús {autobuses_id} espera batería desde {formato_hora(llegada)}"
